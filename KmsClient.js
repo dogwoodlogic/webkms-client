@@ -1,11 +1,14 @@
 /*!
- * Copyright (c) 2019-2021 Digital Bazaar, Inc. All rights reserved.
+ * Copyright (c) 2019-2020 Digital Bazaar, Inc. All rights reserved.
  */
 import base64url from 'base64url-universal';
 import {httpClient, DEFAULT_HEADERS} from '@digitalbazaar/http-client';
 import {signCapabilityInvocation} from 'http-signature-zcap-invoke';
 
 const SECURITY_CONTEXT_V2_URL = 'https://w3id.org/security/v2';
+
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+
 
 /**
  * @class
@@ -90,6 +93,7 @@ export class KmsClient {
         err.name = 'DuplicateError';
         throw err;
       }
+
       throw e;
     }
   }
@@ -258,7 +262,9 @@ export class KmsClient {
    * @returns {Promise<Uint8Array|null>} Resolves to the unwrapped key material
    *   or null if the unwrapping failed because the key did not match.
    */
-  async unwrapKey({kekId, wrappedKey, capability, invocationSigner}) {
+  async unwrapKey({
+    kekId, wrappedKey, capability, invocationSigner, retry = 0
+  }) {
     _assert(kekId, 'kekId', 'string');
     _assert(wrappedKey, 'wrappedKey', 'string');
     _assert(invocationSigner, 'invocationSigner', 'object');
@@ -298,6 +304,15 @@ export class KmsClient {
         const err = new Error('Key encryption key not found.');
         err.name = 'NotFoundError';
         throw err;
+      }
+      const name = e.name || '';
+      if(name === 'TimeoutError') {
+        // retry
+        await delay(_calculateBackoff(retry));
+        ++retry;
+        return this.unwrapKey({
+          kekId, wrappedKey, capability, invocationSigner, retry
+        });
       }
       throw e;
     }
@@ -383,7 +398,9 @@ export class KmsClient {
    *
    * @returns {Promise<boolean>} `true` if verified, `false` if not.
    */
-  async verify({keyId, data, signature, capability, invocationSigner}) {
+  async verify({
+    keyId, data, signature, capability, invocationSigner, retry = 0
+  }) {
     _assert(keyId, 'keyId', 'string');
     _assert(data, 'data', 'Uint8Array');
     _assert(signature, 'signature', 'string');
@@ -423,6 +440,15 @@ export class KmsClient {
         err.name = 'NotFoundError';
         throw err;
       }
+      const name = e.name || '';
+      if(name === 'TimeoutError') {
+        // retry
+        await delay(_calculateBackoff(retry));
+        ++retry;
+        return this.verify({
+          keyId, data, signature, capability, invocationSigner, retry
+        });
+      }
       throw e;
     }
   }
@@ -447,7 +473,9 @@ export class KmsClient {
    *
    * @returns {Promise<Uint8Array>} The shared secret bytes.
    */
-  async deriveSecret({keyId, publicKey, capability, invocationSigner}) {
+  async deriveSecret({
+    keyId, publicKey, capability, invocationSigner, retry=0
+  }) {
     _assert(keyId, 'keyId', 'string');
     _assert(publicKey, 'publicKey', 'object');
     _assert(invocationSigner, 'invocationSigner', 'object');
@@ -484,6 +512,15 @@ export class KmsClient {
         const err = new Error('Key agreement key not found.');
         err.name = 'NotFoundError';
         throw err;
+      }
+      const name = e.name || '';
+      if(name === 'TimeoutError') {
+        // retry
+        await delay(_calculateBackoff(retry));
+        ++retry;
+        return this.deriveSecret({
+          keyId, publicKey, capability, invocationSigner, retry
+        });
       }
       throw e;
     }
@@ -721,4 +758,18 @@ async function _assert(variable, name, types) {
       `"${name}" must be ${types.length === 1 ? 'a' : 'one of'} ` +
       `${types.join(', ')}.`);
   }
+}
+
+// 0 5 5 10 10 30 60
+function _calculateBackoff(retries) {
+  if(retries === 0) {
+    return 0;
+  }
+  if(retries > 0 && retries <= 2) {
+    return 5000;
+  }
+  if(retries > 2 && retries <= 4) {
+    return 5000;
+  }
+  return retries === 5 ? 30000 : 60000;
 }
