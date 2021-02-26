@@ -310,7 +310,7 @@ export class KmsClient {
         throw err;
       }
       const name = e.name || '';
-      if(name === 'TimeoutError') {
+      if(name === 'TimeoutError' && retry <= 120) {
         // retry
         await delay(_calculateBackoff(retry));
         ++retry;
@@ -448,7 +448,7 @@ export class KmsClient {
         throw err;
       }
       const name = e.name || '';
-      if(name === 'TimeoutError') {
+      if(name === 'TimeoutError' && retry <= 120) {
         // retry
         await delay(_calculateBackoff(retry));
         ++retry;
@@ -521,7 +521,7 @@ export class KmsClient {
         throw err;
       }
       const name = e.name || '';
-      if(name === 'TimeoutError') {
+      if(name === 'TimeoutError' && retry <= 120) {
         // retry
         await delay(_calculateBackoff(retry));
         ++retry;
