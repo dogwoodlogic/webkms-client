@@ -297,7 +297,13 @@ export class KmsClient {
       // send request
       const {agent} = this;
       const result = await httpClient.post(url, {
-        agent, headers, json: operation
+        agent, headers, json: operation,
+        retry: {
+          limit: 13,
+          methods: ['post'],
+          statusCodes: [408, 504]
+        },
+        timeout: 15000
       });
       if(result.data.unwrappedKey === null) {
         return null;
@@ -439,7 +445,13 @@ export class KmsClient {
       // send request
       const {agent} = this;
       const result = await httpClient.post(url, {
-        agent, headers, json: operation
+        agent, headers, json: operation,
+        retry: {
+          limit: 13,
+          methods: ['post'],
+          statusCodes: [408, 504]
+        },
+        timeout: 15000
       });
       return result.data.verified;
     } catch(e) {
@@ -513,7 +525,13 @@ export class KmsClient {
       // send request
       const {agent} = this;
       const result = await httpClient.post(url, {
-        agent, headers, json: operation
+        agent, headers, json: operation,
+        retry: {
+          limit: 13,
+          methods: ['post'],
+          statusCodes: [408, 504]
+        },
+        timeout: 15000
       });
       return base64url.decode(result.data.secret);
     } catch(e) {
