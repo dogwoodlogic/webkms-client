@@ -307,6 +307,7 @@ export class KmsClient {
         // retry
         await delay(_calculateBackoff(retry));
         ++retry;
+        console.log('Retrying operation.');
         return this.unwrapKey({
           kekId, wrappedKey, capability, invocationSigner, retry
         });
@@ -442,6 +443,7 @@ export class KmsClient {
         // retry
         await delay(_calculateBackoff(retry));
         ++retry;
+        console.log('Retrying operation.');
         return this.verify({
           keyId, data, signature, capability, invocationSigner, retry
         });
@@ -515,6 +517,7 @@ export class KmsClient {
         // retry
         await delay(_calculateBackoff(retry));
         ++retry;
+        console.log('Retrying operation.');
         return this.deriveSecret({
           keyId, publicKey, capability, invocationSigner, retry
         });
