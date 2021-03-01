@@ -347,7 +347,7 @@ export class KmsClient {
    *
    * @returns {Promise<string>} The base64url-encoded signature.
    */
-  async sign({keyId, data, capability, invocationSigner}) {
+  async sign({keyId, data, capability, invocationSigner, retry = 0}) {
     _assert(keyId, 'keyId', 'string');
     _assert(data, 'data', 'Uint8Array');
     _assert(invocationSigner, 'invocationSigner', 'object');
@@ -379,7 +379,13 @@ export class KmsClient {
       // send request
       const {agent} = this;
       const result = await httpClient.post(url, {
-        agent, headers, json: operation
+        agent, headers, json: operation,
+        retry: {
+          limit: 13,
+          methods: ['post'],
+          statusCodes: [408, 504]
+        },
+        timeout: 15000
       });
       return result.data.signatureValue;
     } catch(e) {
@@ -387,6 +393,16 @@ export class KmsClient {
         const err = new Error('Key not found.');
         err.name = 'NotFoundError';
         throw err;
+      }
+      const name = e.name || '';
+      if(name === 'TimeoutError' && retry <= 120) {
+        // retry
+        await delay(_calculateBackoff(retry));
+        ++retry;
+        console.log('Retrying operation.');
+        return this.verify({
+          keyId, data, signature, capability, invocationSigner, retry
+        });
       }
       throw e;
     }
