@@ -400,8 +400,8 @@ export class KmsClient {
         await delay(_calculateBackoff(retry));
         ++retry;
         console.log('Retrying operation.');
-        return this.verify({
-          keyId, data, signature, capability, invocationSigner, retry
+        return this.sign({
+          keyId, data, capability, invocationSigner, retry = 0
         });
       }
       throw e;
