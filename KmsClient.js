@@ -391,7 +391,7 @@ export class KmsClient {
         ++retry;
         console.log('Retrying operation.');
         return this.sign({
-          keyId, data, capability, invocationSigner, retry = 0
+          keyId, data, capability, invocationSigner, retry
         });
       }
       throw e;
